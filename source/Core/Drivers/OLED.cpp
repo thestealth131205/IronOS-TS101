@@ -90,7 +90,7 @@ static void oledBulkWrite(uint8_t posX, uint8_t posY, uint8_t sizeX, uint8_t siz
     i2cSendCommandByte(0xB0 + page);
     i2cSendCommandByte(0x10 | (posX >> 4));
     i2cSendCommandByte(posX & 0x0F);
-    I2C_CLASS::Mem_Write(DEVICEADDR_OLED, 0x40, buf, sizeX);
+    I2C_CLASS::Mem_Write(DEVICEADDR_OLED, 0x40, const_cast<uint8_t *>(buf), sizeX);
     buf += sizeX;
   }
 }
