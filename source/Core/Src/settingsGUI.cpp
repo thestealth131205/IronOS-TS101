@@ -39,6 +39,7 @@ static bool showSleepOptions(void);
 static void setSleepTemp(void);
 static void displaySleepTemp(void);
 static void displaySleepTime(void);
+static void displayLoadDetectionEnabled(void);
 #endif /* *not* NO_SLEEP_MODE */
 
 static void setTempF(void);
@@ -49,6 +50,7 @@ static void displayScrollSpeed(void);
 static void displayReverseButtonTempChangeEnabled(void);
 static void displayReverseButtonSettings(void);
 static void displayPowerLimit(void);
+static void displayWeakSupplyBoost(void);
 
 #ifdef BLE_ENABLED
 static void displayBluetoothLE(void);
@@ -355,6 +357,8 @@ const menuitem PowerSavingMenu[] = {
   {SETTINGS_DESC(SettingsItemIndex::SleepTemperature), setSleepTemp, displaySleepTemp, showSleepOptions, SettingsOptions::SleepTemp, SettingsItemIndex::SleepTemperature, 5},
   /* Sleep Time */
   {SETTINGS_DESC(SettingsItemIndex::SleepTimeout), nullptr, displaySleepTime, showSleepOptions, SettingsOptions::SleepTime, SettingsItemIndex::SleepTimeout, 5},
+  /* Load Detection */
+  {SETTINGS_DESC(SettingsItemIndex::LoadDetection), nullptr, displayLoadDetectionEnabled, showSleepOptions, SettingsOptions::LoadDetection, SettingsItemIndex::LoadDetection, 7},
 #endif /* *not* NO_SLEEP_MODE */
   /* Shutdown Time */
   {SETTINGS_DESC(SettingsItemIndex::ShutdownTimeout), nullptr, displayShutdownTime, showSleepOptions, SettingsOptions::ShutdownTime, SettingsItemIndex::ShutdownTimeout, 5},
@@ -421,6 +425,7 @@ const menuitem advancedMenu[] = {
   /*
    *  BluetoothLE
    *  Power Limit
+   *  Weak Supply Boost
    *  Calibrate CJC At Next Boot
    *  Calibrate Input V
    *  Power Pulse
@@ -434,6 +439,8 @@ const menuitem advancedMenu[] = {
 #endif /* BLE_ENABLED */
   /* Power limit */
   {SETTINGS_DESC(SettingsItemIndex::PowerLimit), nullptr, displayPowerLimit, nullptr, SettingsOptions::PowerLimit, SettingsItemIndex::PowerLimit, 4},
+  /* Weak supply PID boost */
+  {SETTINGS_DESC(SettingsItemIndex::WeakSupplyBoost), nullptr, displayWeakSupplyBoost, nullptr, SettingsOptions::WeakSupplyBoost, SettingsItemIndex::WeakSupplyBoost, 7},
   /* Calibrate Cold Junktion Compensation at next boot */
   {SETTINGS_DESC(SettingsItemIndex::CalibrateCJC), setCalibrate, displayCalibrate, nullptr, SettingsOptions::CalibrateCJC, SettingsItemIndex::CalibrateCJC, 7},
   /* Voltage input cal */
@@ -741,6 +748,8 @@ static void displaySleepTime(void) {
   }
 }
 
+static void displayLoadDetectionEnabled(void) { OLED::drawCheckbox(getSettingValue(SettingsOptions::LoadDetection)); }
+
 #endif /* *not* NO_SLEEP_MODE */
 
 static void displayShutdownTime(void) {
@@ -986,6 +995,14 @@ static void displayPowerLimit(void) {
   } else {
     OLED::printNumber(getSettingValue(SettingsOptions::PowerLimit), 3, FontStyle::LARGE);
     OLED::print(LargeSymbolWatts, FontStyle::LARGE);
+  }
+}
+
+static void displayWeakSupplyBoost(void) {
+  if (getSettingValue(SettingsOptions::WeakSupplyBoost) == 0) {
+    OLED::drawUnavailableIcon();
+  } else {
+    OLED::printNumber(getSettingValue(SettingsOptions::WeakSupplyBoost), 1, FontStyle::LARGE, false);
   }
 }
 

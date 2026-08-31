@@ -547,6 +547,12 @@
       "description": "Allows setting a custom wattage for the device to aim to keep the AVERAGE power below. The unit can't control its peak power no matter how you set this. (Except for MHP30 which will regulate nicely to this). If USB-PD is in use, the limit will be set to the lower of this and the supplies advertised wattage."
     },
     {
+      "id": "WeakSupplyBoost",
+      "maxLen": 7,
+      "maxLen2": 15,
+      "description": "Boosts the PID response when the supply has never been able to deliver more than ~20W while heating (likely a weak/power-limited supply). 0 = off, 1-9 = 10%-90% boost."
+    },
+    {
       "id": "CalibrateCJC",
       "maxLen": 8,
       "maxLen2": 15,
@@ -593,6 +599,13 @@
       "maxLen": 7,
       "maxLen2": 15,
       "description": "For manually selecting the type of tip fitted"
+    },
+    {
+      "id": "LoadDetection",
+      "maxLen": 6,
+      "maxLen2": 15,
+      "exclude": ["NO_SLEEP_MODE"],
+      "description": "If enabled, the iron will not enter sleep mode due to inactivity while the heater's power draw stays above the load threshold (~12W), even without movement. Useful when holding the iron still against a pad/trace to heat it up."
     }
   ]
 }

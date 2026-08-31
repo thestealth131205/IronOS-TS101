@@ -25,4 +25,9 @@ extern expMovingAverage<uint32_t, wattHistoryFilter> x10WattHistory;
 uint32_t availableW10(uint8_t sample);
 void     setTipX10Watts(int32_t mw);
 uint8_t  X10WattsToPWM(int32_t milliWatts, uint8_t sample = 0);
+
+// Detects a power-limited (weak) supply: true once the iron has heated at least once
+// since boot but has never been able to output more than weakSupplyThresholdX10Watts.
+// Used to automatically boost the PID thermal mass (P response) to compensate.
+bool isWeakPowerSupplyDetected();
 #endif /* POWER_HPP_ */

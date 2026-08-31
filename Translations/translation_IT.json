@@ -348,6 +348,10 @@
     "SolderingTipType": {
       "displayText": "Tipo di\npunta",
       "description": "Seleziona il modello della punta in uso"
+    },
+    "LoadDetection": {
+      "displayText": "Load\ndetection",
+      "description": "Prevent sleep while heater power draw is above the load threshold (~12W), even without movement"
     }
   }
 }

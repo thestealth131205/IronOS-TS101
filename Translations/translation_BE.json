@@ -348,6 +348,10 @@
     "SolderingTipType": {
       "displayText": "Тып\nджала",
       "description": "Абярыце тып усталяванага джала"
+    },
+    "LoadDetection": {
+      "displayText": "Load\ndetection",
+      "description": "Prevent sleep while heater power draw is above the load threshold (~12W), even without movement"
     }
   }
 }

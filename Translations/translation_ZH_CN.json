@@ -348,6 +348,10 @@
     "SolderingTipType": {
       "displayText": "焊接头类型",
       "description": "选择安装合适的尖端类型"
+    },
+    "LoadDetection": {
+      "displayText": "Load\ndetection",
+      "description": "Prevent sleep while heater power draw is above the load threshold (~12W), even without movement"
     }
   }
 }

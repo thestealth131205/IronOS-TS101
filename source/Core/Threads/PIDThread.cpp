@@ -227,10 +227,20 @@ int32_t getPIDResultX10Watts(TemperatureType_t set_point, TemperatureType_t curr
 #ifdef TIP_CONTROL_PID
   return pid.update(set_point, current_reading, interval, getX10WattageLimits());
 #else
-  return powerStore.update(((TemperatureType_t)getTipThermalMass()) * (set_point - current_reading), // the required power
-                           getTipInertia(),                                                          // Inertia, smaller numbers increase dominance of the previous value
-                           2,                                                                        // gain
-                           rate,                                                                     // PID cycle frequency
+  // If the supply has never been able to deliver more than ~20W while heating, it is likely
+  // power-limited (weak PSU / underpowered PD source). Boost the thermal mass (P response) in
+  // that case so the controller reacts more aggressively per degree of error. The boost amount
+  // is user-adjustable (WeakSupplyBoost setting, 0 = disabled, 1-9 = 10%-90% boost).
+  uint16_t thermalMass    = getTipThermalMass();
+  uint8_t  weakSupplyBoost = getSettingValue(SettingsOptions::WeakSupplyBoost);
+  if (weakSupplyBoost && isWeakPowerSupplyDetected()) {
+    thermalMass = (thermalMass * (100 + ((uint16_t)weakSupplyBoost * 10))) / 100;
+  }
+
+  return powerStore.update(((TemperatureType_t)thermalMass) * (set_point - current_reading), // the required power
+                           getTipInertia(),                                                  // Inertia, smaller numbers increase dominance of the previous value
+                           2,                                                                // gain
+                           rate,                                                             // PID cycle frequency
                            getX10WattageLimits());
 #endif
 }

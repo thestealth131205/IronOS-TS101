@@ -348,6 +348,14 @@
     "SolderingTipType": {
       "displayText": "Löt-\nspitzentyp",
       "description": "Wählen Sie den Typ der eingesetzten Spitze"
+    },
+    "LoadDetection": {
+      "displayText": "Last-\nErkennung",
+      "description": "Verhindert den Ruhemodus, solange die Heizleistung ueber der Lastschwelle liegt (~12W), auch ohne Bewegung"
+    },
+    "WeakSupplyBoost": {
+      "displayText": "Schwache\nVersorgung",
+      "description": "Verstaerkt die PID-Reaktion, wenn die Versorgung beim Heizen nie mehr als ~20W liefert (schwaches Netzteil). 0 = aus, 1-9 = 10%-90% Verstaerkung"
     }
   }
 }

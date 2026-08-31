@@ -108,6 +108,8 @@ enum class SettingsItemIndex : uint8_t {
   SettingsReset,
   LanguageSwitch,
   SolderingTipType,
+  LoadDetection,
+  WeakSupplyBoost,
   NUM_ITEMS,
 };
 

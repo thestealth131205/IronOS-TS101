@@ -348,6 +348,10 @@
     "SolderingTipType": {
       "displayText": "Typ grotu",
       "description": "Wybierz typ zamontowanego grotu"
+    },
+    "LoadDetection": {
+      "displayText": "Load\ndetection",
+      "description": "Prevent sleep while heater power draw is above the load threshold (~12W), even without movement"
     }
   }
 }

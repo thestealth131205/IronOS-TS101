@@ -15,6 +15,11 @@ const int      fastPWMChangeoverTolerance = 16;
 
 expMovingAverage<uint32_t, wattHistoryFilter> x10WattHistory = {0};
 
+// Highest x10Watts actually output while heating since boot, and the threshold below which
+// we consider the supply power-limited (weak). 200 = 20.0 W.
+static uint32_t       maxX10WattsSeenSinceBoot     = 0;
+static const uint32_t weakSupplyThresholdX10Watts  = 200;
+
 bool shouldBeUsingFastPWMMode(const uint8_t pwmTicks) {
   // Determine if we should use slow or fast PWM mode
   // Crossover between modes set around the midpoint of the PWM control point
@@ -34,7 +39,13 @@ void setTipX10Watts(int32_t mw) {
   uint32_t actualMilliWatts = PWMToX10Watts(outputPWMLevel, 0);
 
   x10WattHistory.update(actualMilliWatts);
+
+  if (actualMilliWatts > maxX10WattsSeenSinceBoot) {
+    maxX10WattsSeenSinceBoot = actualMilliWatts;
+  }
 }
+
+bool isWeakPowerSupplyDetected() { return maxX10WattsSeenSinceBoot > 0 && maxX10WattsSeenSinceBoot < weakSupplyThresholdX10Watts; }
 
 uint32_t availableW10(uint8_t sample) {
   // P = V^2 / R, v*v = v^2 * 100
