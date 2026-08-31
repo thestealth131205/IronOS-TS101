@@ -42,10 +42,14 @@ I2C_CLASS::I2C_REG OLED_Setup_Array[] = {
     {0x80,  OLED_HEIGHT - 1, 0}, /* Multiplex ratio adjusts how far down the matrix it scans */
     {0x80,             0xC0, 0}, /* Set COM Scan direction */
     {0x80,             0xD3, 0}, /* Set vertical Display offset */
+#ifdef OLED_SEGMENT_MAP_REVERSED
+    {0x80,             0x30, 0}, /* 128x32 panel needs a non-zero offset in this orientation; see setRotation() */
+#else
     {0x80,             0x00, 0}, /* 0 Offset */
+#endif
     {0x80,             0x40, 0}, /* Set Display start line to 0 */
 #ifdef OLED_SEGMENT_MAP_REVERSED
-    {0x80,             0xA1, 0}, /* Set Segment remap to normal */
+    {0x80,             0xA0, 0}, /* Set Segment remap to normal (matches non-left-handed default; see setRotation()) */
 #else
     {0x80, 0xA0, 0}, /* Set Segment remap to normal */
 #endif
@@ -66,39 +70,30 @@ I2C_CLASS::I2C_REG OLED_Setup_Array[] = {
     {0x80,          OLED_ON, 0}, /* Display on */
 };
 // Setup based on the SSD1307 and modified for the SSD1306
+//
+// NOTE: commands are no longer sent as one bulk transfer of 0x80-continuation-prefixed
+// bytes (I2C_CLASS::writeRegistersBulk()/Transmit()). On the 128x32 (TS101) OLED clone
+// that bulk transfer corrupted the panel so only a small area displayed correctly.
+// Instead, each command byte is sent as its own single-byte I2C transaction
+// (i2cSendCommandByte()), and the framebuffer is written page-by-page with explicit
+// page/column addressing (oledBulkWrite()), matching how the official Miniware TS101
+// firmware talks to the panel.
 
-const uint8_t REFRESH_COMMANDS[17] = {
-    // Set display ON:
-    0x80,
-    0xAF, // cmd
+static void i2cSendCommandByte(uint8_t cmd) { I2C_CLASS::I2C_RegisterWrite(DEVICEADDR_OLED, 0x00, cmd); }
 
-    // Set column address:
-    //  A[6:0] - Column start address = 0x20
-    //  B[6:0] - Column end address = 0x7F
-    0x80,
-    0x21, // cmd
-    0x80,
-    OLED_GRAM_START, // A
-    0x80,
-    OLED_GRAM_END, // B
-
-    // Set COM output scan direction (normal mode, COM0 to COM[N-1])
-    0x80,
-    0xC0,
-
-    // Set page address:
-    //  A[2:0] - Page start address = 0
-    //  B[2:0] - Page end address = 1
-    0x80,
-    0x22, // cmd
-    0x80,
-    0x00, // A
-    0x80,
-    (OLED_HEIGHT / 8) - 1, // B
-
-    // Start of data
-    0x40,
-};
+// Writes framebuffer bytes into the display GRAM, addressing it one 8px-tall page at a
+// time (SSD1306 "page addressing mode": 0xB0+page, then column low/high nibble).
+static void oledBulkWrite(uint8_t posX, uint8_t posY, uint8_t sizeX, uint8_t sizeY, const uint8_t *buf) {
+  const uint8_t startPage = posY / 8;
+  const uint8_t endPage   = (posY + sizeY + 7) / 8;
+  for (uint8_t page = startPage; page < endPage; page++) {
+    i2cSendCommandByte(0xB0 + page);
+    i2cSendCommandByte(0x10 | (posX >> 4));
+    i2cSendCommandByte(posX & 0x0F);
+    I2C_CLASS::Mem_Write(DEVICEADDR_OLED, 0x40, buf, sizeX);
+    buf += sizeX;
+  }
+}
 
 /*
  * Animation timing function that follows a bezier curve.
@@ -132,19 +127,38 @@ void OLED::initialize() {
 
 #endif /* OLED_128x32 */
   displayOffset = 0;
-  memcpy(&screenBuffer[0], &REFRESH_COMMANDS[0], sizeof(REFRESH_COMMANDS));
-  memcpy(&secondFrameBuffer[0], &REFRESH_COMMANDS[0], sizeof(REFRESH_COMMANDS));
+  // screenBuffer[5]/[7]/[9] track the currently active GRAM start/end column and COM scan
+  // direction (used by refresh()/maskScrollIndicatorOnOLED()). These mirror what
+  // setRotation() would set for the default (non-left-handed) orientation; setRotation()
+  // itself early-returns without writing them the first time it's called with the
+  // orientation that is already active.
+  screenBuffer[5] = OLED_GRAM_START;
+  screenBuffer[7] = OLED_GRAM_END;
+  screenBuffer[9] = 0xC0;
 
   // Set the display to be ON once the settings block is sent and send the
   // initialisation data to the OLED.
-
-  for (int tries = 0; tries < 10; tries++) {
-    if (I2C_CLASS::writeRegistersBulk(DEVICEADDR_OLED, OLED_Setup_Array, sizeof(OLED_Setup_Array) / sizeof(OLED_Setup_Array[0]))) {
-      tries = 11;
-    }
+  for (uint8_t i = 0; i < sizeof(OLED_Setup_Array) / sizeof(OLED_Setup_Array[0]); i++) {
+    i2cSendCommandByte(OLED_Setup_Array[i].val);
   }
   setDisplayState(DisplayState::ON);
   initDone = true;
+}
+
+void OLED::refresh() {
+  if (checkDisplayBufferChecksum()) {
+    oledBulkWrite(screenBuffer[5], 0, OLED_WIDTH, OLED_HEIGHT, &screenBuffer[FRAMEBUFFER_START]);
+    // I2C tx time is ~ 20mS Ensure after calling this you delay for at least 25ms
+    // or we need to goto double buffering
+  }
+}
+
+void OLED::setDisplayState(DisplayState state) {
+  if (state != displayState) {
+    displayState = state;
+    i2cSendCommandByte(state == ON ? OLED_ON : OLED_OFF);
+    osDelay(TICKS_10MS);
+  }
 }
 
 void OLED::setFramebuffer(uint8_t *buffer) {
@@ -272,29 +286,9 @@ void OLED::drawScrollIndicator(uint8_t y, uint8_t height) {
 void OLED::maskScrollIndicatorOnOLED() {
   // The right-most column depends on the screen rotation, so just take
   // it from the screen buffer which is updated by `OLED::setRotation`.
-  uint8_t rightmostColumn = screenBuffer[7];
-  uint8_t maskCommands[]  = {
-      // Set column address:
-      //  A[6:0] - Column start address = rightmost column
-      //  B[6:0] - Column end address = rightmost column
-      0x80,
-      0x21, // cmd
-      0x80,
-      rightmostColumn, // A
-      0x80,
-      rightmostColumn, // B
-
-      // Start of data
-      0x40,
-#ifdef OLED_128x32
-      0x00,
-      0x00,
-#endif /* OLED_128x32 */
-      // Clears two 8px strips
-      0x00,
-      0x00,
-  };
-  I2C_CLASS::Transmit(DEVICEADDR_OLED, maskCommands, sizeof(maskCommands));
+  uint8_t              rightmostColumn                = screenBuffer[7];
+  static const uint8_t zeroColumn[OLED_HEIGHT / 8] = {0}; // Clears the full column height (all pages)
+  oledBulkWrite(rightmostColumn, 0, 1, OLED_HEIGHT, zeroColumn);
 }
 
 /**
@@ -522,25 +516,34 @@ void OLED::setRotation(bool leftHanded) {
     return;
   }
 #ifdef OLED_SEGMENT_MAP_REVERSED
-  if (!leftHanded) {
+  // On the 128x32 (TS101) panel, segment-remap, COM-scan-direction and the vertical
+  // Display-Offset (0xD3) must be sent together as a matched triplet: changing
+  // orientation without also re-sending the offset leaves the image shifted by half
+  // the screen height.
+  if (leftHanded) {
     OLED_Setup_Array[9].val = 0xA1;
+    OLED_Setup_Array[5].val = 0xC8;
+    OLED_Setup_Array[7].val = 0x10;
   } else {
     OLED_Setup_Array[9].val = 0xA0;
+    OLED_Setup_Array[5].val = 0xC0;
+    OLED_Setup_Array[7].val = 0x30;
   }
+  i2cSendCommandByte(OLED_Setup_Array[9].val);
+  i2cSendCommandByte(OLED_Setup_Array[5].val);
+  i2cSendCommandByte(OLED_Setup_Array[6].val); // 0xD3, Set Display Offset
+  i2cSendCommandByte(OLED_Setup_Array[7].val);
 #else
   if (leftHanded) {
     OLED_Setup_Array[9].val = 0xA1;
-  } else {
-    OLED_Setup_Array[9].val = 0xA0;
-  }
-#endif /* OLED_SEGMENT_MAP_REVERSED */
-  // send command struct again with changes
-  if (leftHanded) {
     OLED_Setup_Array[5].val = 0xC8; // c1?
   } else {
+    OLED_Setup_Array[9].val = 0xA0;
     OLED_Setup_Array[5].val = 0xC0;
   }
-  I2C_CLASS::writeRegistersBulk(DEVICEADDR_OLED, OLED_Setup_Array, sizeof(OLED_Setup_Array) / sizeof(OLED_Setup_Array[0]));
+  i2cSendCommandByte(OLED_Setup_Array[9].val);
+  i2cSendCommandByte(OLED_Setup_Array[5].val);
+#endif /* OLED_SEGMENT_MAP_REVERSED */
   osDelay(TICKS_10MS);
   inLeftHandedMode = leftHanded;
 
@@ -548,9 +551,8 @@ void OLED::setRotation(bool leftHanded) {
                                                                                // mode as driver ram is 128 wide
   screenBuffer[7] = inLeftHandedMode ? OLED_GRAM_END_FLIP : OLED_GRAM_END;     // End address of the ram segment we are writing to (96 wide)
   screenBuffer[9] = inLeftHandedMode ? 0xC8 : 0xC0;
-  // Force a screen refresh
-  const int len = FRAMEBUFFER_START + (OLED_WIDTH * (OLED_HEIGHT / 8));
-  I2C_CLASS::Transmit(DEVICEADDR_OLED, screenBuffer, len);
+  // Force a full redraw so the new orientation is reflected immediately
+  oledBulkWrite(screenBuffer[5], 0, OLED_WIDTH, OLED_HEIGHT, &screenBuffer[FRAMEBUFFER_START]);
   osDelay(TICKS_10MS);
   checkDisplayBufferChecksum();
 }
@@ -558,7 +560,8 @@ void OLED::setRotation(bool leftHanded) {
 void OLED::setBrightness(uint8_t contrast) {
   if (OLED_Setup_Array[15].val != contrast) {
     OLED_Setup_Array[15].val = contrast;
-    I2C_CLASS::writeRegistersBulk(DEVICEADDR_OLED, &OLED_Setup_Array[14], 2);
+    i2cSendCommandByte(OLED_Setup_Array[14].val); // 0x81, contrast-control command
+    i2cSendCommandByte(contrast);
   }
 }
 
@@ -566,7 +569,7 @@ void OLED::setInverseDisplay(bool inverse) {
   uint8_t normalInverseCmd = inverse ? 0xA7 : 0xA6;
   if (OLED_Setup_Array[21].val != normalInverseCmd) {
     OLED_Setup_Array[21].val = normalInverseCmd;
-    I2C_CLASS::I2C_RegisterWrite(DEVICEADDR_OLED, 0x80, normalInverseCmd);
+    i2cSendCommandByte(normalInverseCmd);
   }
 }
 

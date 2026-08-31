@@ -48,7 +48,11 @@ extern "C" {
 
 #define OLED_VCOM_LAYOUT 0x12
 #define OLED_SEGMENT_MAP_REVERSED
-#define OLED_DIVIDER 0xD3
+// 0xD5 is the correct SSD1306/1307 "Set Display Clock Divide Ratio" command; 0xD3 is
+// actually "Set Display Offset" (sent separately below) and was a copy/paste mistake
+// for the 128x32 (TS101) panel. Using the wrong divider command corrupted timing on
+// the TS101's OLED clone, causing only a small area of the panel to display correctly.
+#define OLED_DIVIDER 0xD5
 
 #else
 
@@ -83,25 +87,8 @@ public:
   static void initialize(); // Startup the I2C coms (brings screen out of reset etc)
   static bool isInitDone();
   // Draw the buffer out to the LCD if any content has changed.
-  static void refresh() {
-
-    if (checkDisplayBufferChecksum()) {
-      const int len = FRAMEBUFFER_START + (OLED_WIDTH * (OLED_HEIGHT / 8));
-      I2C_CLASS::Transmit(DEVICEADDR_OLED, screenBuffer, len);
-      // DMA tx time is ~ 20mS Ensure after calling this you delay for at least 25ms
-      // or we need to goto double buffering
-    }
-  }
-
-  static void setDisplayState(DisplayState state) {
-    if (state != displayState) {
-      displayState    = state;
-      screenBuffer[1] = (state == ON) ? OLED_ON : OLED_OFF;
-      // Dump the screen state change out _now_
-      I2C_CLASS::Transmit(DEVICEADDR_OLED, screenBuffer, FRAMEBUFFER_START - 1);
-      osDelay(TICKS_10MS);
-    }
-  }
+  static void refresh();
+  static void setDisplayState(DisplayState state);
 
   // Set the rotation for the screen
   static void setRotation(bool leftHanded);

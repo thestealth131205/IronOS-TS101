@@ -1,0 +1,53 @@
+name: TS101 DE/EN Build
+
+on:
+  push:
+  pull_request:
+    branches:
+      - master
+      - dev
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container:
+      image: alpine:3.21
+    strategy:
+      matrix:
+        language: ["EN", "DE"]
+      fail-fast: true
+
+    steps:
+      - name: Install dependencies (apk)
+        run: apk add --no-cache gcc-arm-none-eabi g++-arm-none-eabi newlib-arm-none-eabi findutils python3 py3-pip make git bash
+
+      - name: Install dependencies (python)
+        run: python3 -m pip install --break-system-packages bdflib pyyaml
+
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Git ownership exception
+        run: git config --global --add safe.directory /__w/IronOS/IronOS && git config --global safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Build TS101 (${{ matrix.language }})
+        run: make -C source/ -j$(nproc) model=TS101 firmware-${{ matrix.language }}
+
+      - name: Copy license files
+        run: cp LICENSE scripts/LICENSE_RELEASE.md source/Hexfile/
+
+      - name: Archive TS101 ${{ matrix.language }} artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: TS101_${{ matrix.language }}
+          path: |
+            source/Hexfile/TS101_${{ matrix.language }}.hex
+            source/Hexfile/TS101_${{ matrix.language }}.dfu
+            source/Hexfile/TS101_${{ matrix.language }}.bin
+            source/Hexfile/TS101_${{ matrix.language }}.elf
+            source/Hexfile/LICENSE
+            source/Hexfile/LICENSE_RELEASE.md
+          if-no-files-found: error
