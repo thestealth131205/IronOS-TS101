@@ -177,6 +177,16 @@ void startMOVTask(void const *argument __unused) {
       // Confirmed on hardware: dividing by 6 gives comparable real-world sensitivity to the
       // formula's intended feel on genuine silicon, across the full Sensitivity range.
       threshold /= 6;
+      // Even after the divide-by-6 fix, the top two Sensitivity steps (8 and 9) still needed a
+      // firm shake to wake the iron, which is not sensitive enough to register the iron being
+      // gently repositioned/held against a pad. Give these two steps an extra reduction so they
+      // are noticeably more sensitive than step 7, instead of nearly the same.
+      uint8_t sensitivityLevel = getSettingValue(SettingsOptions::Sensitivity);
+      if (sensitivityLevel == 9) {
+        threshold /= 3;
+      } else if (sensitivityLevel == 8) {
+        threshold /= 2;
+      }
     }
 #endif
     readAccelerometer(tx, ty, tz, rotation);
