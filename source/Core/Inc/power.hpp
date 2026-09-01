@@ -26,8 +26,10 @@ uint32_t availableW10(uint8_t sample);
 void     setTipX10Watts(int32_t mw);
 uint8_t  X10WattsToPWM(int32_t milliWatts, uint8_t sample = 0);
 
-// Detects a power-limited (weak) supply: true once the iron has heated at least once
-// since boot but has never been able to output more than weakSupplyThresholdX10Watts.
+// Detects a power-limited (weak) supply: 5 seconds after a heating cycle starts, the highest
+// x10Watts reached so far is compared against the WeakSupplyThreshold setting. If it never
+// exceeded that threshold, this returns true for the rest of the session (until the next
+// reboot), since the supply's capability does not change while the iron stays plugged in.
 // Used to automatically boost the PID thermal mass (P response) to compensate.
 bool isWeakPowerSupplyDetected();
 #endif /* POWER_HPP_ */

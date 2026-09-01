@@ -7,6 +7,7 @@
 
 #include <BSP.h>
 #include <Settings.h>
+#include <cmsis_os.h>
 #include <power.hpp>
 
 static int32_t PWMToX10Watts(uint8_t pwm, uint8_t sample);
@@ -15,10 +16,15 @@ const int      fastPWMChangeoverTolerance = 16;
 
 expMovingAverage<uint32_t, wattHistoryFilter> x10WattHistory = {0};
 
-// Highest x10Watts actually output while heating since boot, and the threshold below which
-// we consider the supply power-limited (weak). 200 = 20.0 W.
-static uint32_t       maxX10WattsSeenSinceBoot     = 0;
-static const uint32_t weakSupplyThresholdX10Watts  = 200;
+// Weak-supply detection: 5 seconds after the start of a heating cycle, look at the highest
+// x10Watts actually output so far during that cycle. If it never exceeded the user-configured
+// WeakSupplyThreshold setting, the supply is considered power-limited (weak). Since the supply
+// itself does not change while the iron stays plugged in, once detected this stays latched for
+// the remainder of the session (until the next reboot), not just for the current heating cycle.
+static const TickType_t weakSupplyEvaluationDelayTicks = 5 * TICKS_SECOND;
+static TickType_t       heatingStartTick               = 0; // 0 = not currently heating
+static uint32_t         maxX10WattsThisHeatCycle        = 0;
+static bool             weakSupplyDetectedLatched       = false;
 
 bool shouldBeUsingFastPWMMode(const uint8_t pwmTicks) {
   // Determine if we should use slow or fast PWM mode
@@ -40,12 +46,31 @@ void setTipX10Watts(int32_t mw) {
 
   x10WattHistory.update(actualMilliWatts);
 
-  if (actualMilliWatts > maxX10WattsSeenSinceBoot) {
-    maxX10WattsSeenSinceBoot = actualMilliWatts;
+  if (actualMilliWatts > 0) {
+    if (heatingStartTick == 0) {
+      // Start of a new heating cycle: begin a fresh observation window
+      heatingStartTick         = xTaskGetTickCount();
+      maxX10WattsThisHeatCycle = 0;
+    }
+    if (actualMilliWatts > maxX10WattsThisHeatCycle) {
+      maxX10WattsThisHeatCycle = actualMilliWatts;
+    }
+    if (!weakSupplyDetectedLatched && (xTaskGetTickCount() - heatingStartTick) >= weakSupplyEvaluationDelayTicks) {
+      uint32_t thresholdX10Watts = ((uint32_t)getSettingValue(SettingsOptions::WeakSupplyThreshold)) * 10;
+      if (thresholdX10Watts > 0 && maxX10WattsThisHeatCycle < thresholdX10Watts) {
+        // Latches for the rest of the session (until next reboot) since the supply's
+        // capability does not change while the iron stays plugged in.
+        weakSupplyDetectedLatched = true;
+      }
+    }
+  } else {
+    // Heater is off: end the current heating cycle so the next one gets re-evaluated
+    // (weakSupplyDetectedLatched itself is intentionally NOT reset here)
+    heatingStartTick = 0;
   }
 }
 
-bool isWeakPowerSupplyDetected() { return maxX10WattsSeenSinceBoot > 0 && maxX10WattsSeenSinceBoot < weakSupplyThresholdX10Watts; }
+bool isWeakPowerSupplyDetected() { return weakSupplyDetectedLatched; }
 
 uint32_t availableW10(uint8_t sample) {
   // P = V^2 / R, v*v = v^2 * 100
