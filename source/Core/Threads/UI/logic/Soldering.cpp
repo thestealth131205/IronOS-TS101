@@ -57,10 +57,13 @@ OperatingMode handleSolderingButtons(const ButtonState buttons, guiContext *cxt)
     cxt->scratch_state.state1 = 0;
     break;
   case BUTTON_BOTH:
-  /*Fall through*/
-  case BUTTON_B_LONG:
     cxt->transitionMode = detailedView ? TransitionAnimation::None : TransitionAnimation::Right;
     return OperatingMode::HomeScreen;
+  case BUTTON_B_LONG:
+    // Long hold of the back button (near the display) jumps straight into the
+    // settings menu while soldering, without needing to exit to the home screen first.
+    cxt->transitionMode = TransitionAnimation::Right;
+    return OperatingMode::SettingsMenu;
   case BUTTON_F_LONG:
     // if boost mode is enabled turn it on
     if (getSettingValue(SettingsOptions::BoostTemp)) {
@@ -101,7 +104,8 @@ OperatingMode gui_solderingMode(const ButtonState buttons, guiContext *cxt) {
    * --> Long hold front button to enter boost mode
    * ---> Just temporarily sets the system into the alternate temperature for
    * PID control
-   * --> Long hold back button to exit
+   * --> Long hold back button to open the settings menu directly
+   * --> Both buttons long hold to exit to home screen
    * --> Double button to exit
    * --> Long hold double button to toggle key lock
    */

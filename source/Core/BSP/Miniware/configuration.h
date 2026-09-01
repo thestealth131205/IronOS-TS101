@@ -201,7 +201,7 @@
 #define TEMP_uV_LOOKUP_HAKKO
 #define ACCEL_LIS_CLONE          1
 #define HARDWARE_MAX_WATTAGE_X10 1000
-#define TIP_THERMAL_MASS         65 // X10 watts to raise 1 deg C in 1 second
+#define TIP_THERMAL_MASS         85 // X10 watts to raise 1 deg C in 1 second (base 65, +30%)
 #define TIP_RESISTANCE           75 // x10 ohms, 7.5 typical for ts100 tips
 
 #define TIP_HAS_DIRECT_PWM   1

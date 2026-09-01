@@ -407,7 +407,7 @@ uint16_t getTipThermalMass() {
   if (lastTipResistance >= 80) {
     return TIP_THERMAL_MASS;
   }
-  return 45;
+  return 54;
 #else
   return TIP_THERMAL_MASS;
 #endif
@@ -417,7 +417,7 @@ uint16_t getTipInertia() {
   if (lastTipResistance >= 80) {
     return TIP_THERMAL_MASS;
   }
-  return 10;
+  return 12;
 #else
   return TIP_THERMAL_MASS;
 #endif
