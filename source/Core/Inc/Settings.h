@@ -80,8 +80,9 @@ enum SettingsOptions {
   ReverseButtonSettings          = 55, // Change the A and B button assigment in Settings menu
   LoadDetection                  = 56, // Prevent sleep mode while heater power draw is above the load threshold, even without movement
   WeakSupplyBoost                = 57, // Boost PID thermal-mass response when a weak/power-limited supply is detected (0 = off, 1-9 = 10%-90% boost)
+  WeakSupplyThreshold            = 58, // Watt threshold checked 5s after heating starts; below this the supply is considered weak (0 = disabled)
   //
-  SettingsOptionsLength = 58, // End marker
+  SettingsOptionsLength = 59, // End marker
 };
 
 // For every setting we need to store the min/max/increment values

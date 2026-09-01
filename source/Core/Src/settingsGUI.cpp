@@ -51,6 +51,7 @@ static void displayReverseButtonTempChangeEnabled(void);
 static void displayReverseButtonSettings(void);
 static void displayPowerLimit(void);
 static void displayWeakSupplyBoost(void);
+static void displayWeakSupplyThreshold(void);
 
 #ifdef BLE_ENABLED
 static void displayBluetoothLE(void);
@@ -426,6 +427,7 @@ const menuitem advancedMenu[] = {
    *  BluetoothLE
    *  Power Limit
    *  Weak Supply Boost
+   *  Weak Supply Threshold
    *  Calibrate CJC At Next Boot
    *  Calibrate Input V
    *  Power Pulse
@@ -441,6 +443,8 @@ const menuitem advancedMenu[] = {
   {SETTINGS_DESC(SettingsItemIndex::PowerLimit), nullptr, displayPowerLimit, nullptr, SettingsOptions::PowerLimit, SettingsItemIndex::PowerLimit, 4},
   /* Weak supply PID boost */
   {SETTINGS_DESC(SettingsItemIndex::WeakSupplyBoost), nullptr, displayWeakSupplyBoost, nullptr, SettingsOptions::WeakSupplyBoost, SettingsItemIndex::WeakSupplyBoost, 7},
+  /* Weak supply detection threshold */
+  {SETTINGS_DESC(SettingsItemIndex::WeakSupplyThreshold), nullptr, displayWeakSupplyThreshold, nullptr, SettingsOptions::WeakSupplyThreshold, SettingsItemIndex::WeakSupplyThreshold, 4},
   /* Calibrate Cold Junktion Compensation at next boot */
   {SETTINGS_DESC(SettingsItemIndex::CalibrateCJC), setCalibrate, displayCalibrate, nullptr, SettingsOptions::CalibrateCJC, SettingsItemIndex::CalibrateCJC, 7},
   /* Voltage input cal */
@@ -1003,6 +1007,15 @@ static void displayWeakSupplyBoost(void) {
     OLED::drawUnavailableIcon();
   } else {
     OLED::printNumber(getSettingValue(SettingsOptions::WeakSupplyBoost), 1, FontStyle::LARGE, false);
+  }
+}
+
+static void displayWeakSupplyThreshold(void) {
+  if (getSettingValue(SettingsOptions::WeakSupplyThreshold) == 0) {
+    OLED::drawUnavailableIcon();
+  } else {
+    OLED::printNumber(getSettingValue(SettingsOptions::WeakSupplyThreshold), 3, FontStyle::LARGE);
+    OLED::print(LargeSymbolWatts, FontStyle::LARGE);
   }
 }
 

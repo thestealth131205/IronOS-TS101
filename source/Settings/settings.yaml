@@ -289,3 +289,8 @@ settings:
     max: 9
     min: 0
     name: WeakSupplyBoost
+  - default: 20
+    increment: 5
+    max: MAX_POWER_LIMIT
+    min: 0
+    name: WeakSupplyThreshold

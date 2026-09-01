@@ -110,6 +110,7 @@ enum class SettingsItemIndex : uint8_t {
   SolderingTipType,
   LoadDetection,
   WeakSupplyBoost,
+  WeakSupplyThreshold,
   NUM_ITEMS,
 };
 

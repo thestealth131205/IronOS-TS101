@@ -356,6 +356,10 @@
     "WeakSupplyBoost": {
       "displayText": "Weak PSU\nboost",
       "description": "Boosts PID response when the supply never exceeds ~20W while heating (weak supply). 0 = off, 1-9 = 10%-90% boost"
+    },
+    "WeakSupplyThreshold": {
+      "displayText": "Weak PSU\nthreshold",
+      "description": "Wattage checked 5s after heating starts; if the max power stays below this, the weak-supply PID boost engages (W=watt). 0 = off"
     }
   }
 }

@@ -356,6 +356,10 @@
     "WeakSupplyBoost": {
       "displayText": "Schwache\nVersorgung",
       "description": "Verstaerkt die PID-Reaktion, wenn die Versorgung beim Heizen nie mehr als ~20W liefert (schwaches Netzteil). 0 = aus, 1-9 = 10%-90% Verstaerkung"
+    },
+    "WeakSupplyThreshold": {
+      "displayText": "Schwelle\nschw. Netzteil",
+      "description": "Leistungswert, der 5s nach Heizbeginn geprueft wird; bleibt die maximale Leistung darunter, greift der PID-Boost fuer schwache Versorgung (W=Watt). 0 = aus"
     }
   }
 }

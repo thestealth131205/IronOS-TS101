@@ -606,6 +606,12 @@
       "maxLen": 7,
       "maxLen2": 15,
       "description": "Boosts the PID response when the supply has never been able to deliver more than ~20W while heating (likely a weak/power-limited supply). 0 = off, 1-9 = 10%-90% boost."
+    },
+    {
+      "id": "WeakSupplyThreshold",
+      "maxLen": 7,
+      "maxLen2": 15,
+      "description": "Wattage threshold checked 5 seconds after a heating cycle starts. If the highest power reached by then is below this value, the supply is considered weak and the WeakSupplyBoost PID boost is applied for the rest of that heating cycle. 0 = disabled."
     }
   ]
 }
