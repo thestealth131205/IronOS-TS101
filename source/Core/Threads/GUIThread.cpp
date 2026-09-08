@@ -40,6 +40,23 @@ ButtonState   buttonsAtDeviceBoot;                                      // We re
 OperatingMode currentOperatingMode = OperatingMode::InitialisationDone; // Current mode we are rendering
 guiContext    context;                                                  // Context passed to functions to aid in state during render passes
 
+// Shows the owner's username, as large as the panel allows, for 5 seconds (or until a button is
+// pressed) right at startup so it's obvious which iron this is.
+static void showUsernameSplash() {
+  static const char *username  = "TheStealth";
+  const uint8_t      length    = static_cast<uint8_t>(strlen(username));
+  const bool         fitsLarge = OLED_WIDTH >= (FONT_12_WIDTH * length);
+  const FontStyle    font      = fitsLarge ? FontStyle::LARGE : FontStyle::SMALL;
+  const uint8_t      charW     = fitsLarge ? FONT_12_WIDTH : 6;
+  const uint8_t      charH     = fitsLarge ? 16 : 8;
+
+  OLED::clearScreen();
+  OLED::setCursor((OLED_WIDTH - charW * length) / 2, (OLED_HEIGHT - charH) / 2);
+  OLED::print(username, font);
+  OLED::refresh();
+  waitForButtonPressOrTimeout(TICKS_SECOND * 5);
+}
+
 OperatingMode handle_post_init_state();
 OperatingMode guiHandleDraw(void) {
   OLED::clearScreen(); // Clear ready for render pass
@@ -81,6 +98,7 @@ OperatingMode guiHandleDraw(void) {
     newMode = OperatingMode::InitialisationDone;
 #endif
   case OperatingMode::StartupLogo:
+    showUsernameSplash();
     showBootLogo();
 
     if (getSettingValue(SettingsOptions::AutoStartMode) == autoStartMode_t::SLEEP) {
